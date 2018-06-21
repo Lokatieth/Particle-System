@@ -17,6 +17,7 @@ int main(void)
 
 	display->update();
 	display->clean();
+	display->kill();
 
 	return 0;
 }

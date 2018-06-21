@@ -5,15 +5,72 @@
 #include "FileSystem.hpp"
 
 
-void processInput(GLFWwindow *window)
+void processInput(GLFWwindow *window, Camera *camera, float delta)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+		 float cameraSpeed = 25 * delta; // adjust accordingly
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera->pos += cameraSpeed * camera->front;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera->pos -= cameraSpeed * camera->front;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera->pos -= glm::normalize(glm::cross(camera->front, camera->up)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera->pos += glm::normalize(glm::cross(camera->front, camera->up)) * cameraSpeed;
 }
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	// glfwGetCursorPos(window, &xp	os, &ypos);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	 
+	Camera *cam;
+	cam = Camera::getInstance();
+
+	// (void)xpos;
+	// (void)ypos;
+	// (void)window;
+    if (cam->firstMouse)
+    {
+        cam->lastX = xpos;
+        cam->lastY = ypos;
+        cam->firstMouse = false;
+    }
+	std::cout << "xpos = [" << xpos << "] and ypos = [" << ypos << "]\n";
+
+    float xoffset = xpos - cam->lastX;
+    float yoffset = cam->lastY - ypos; // reversed since y-coordinates go from bottom to top
+    cam->lastX = xpos;
+    cam->lastY = ypos;
+
+    float sensitivity = 0.1f; // change this value to your liking
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    cam->yaw += xoffset;
+    cam->pitch += yoffset;
+
+    // make sure that when cam->pitch is out of bounds, screen doesn't get flipped
+    if (cam->pitch > 89.0f)
+        cam->pitch = 89.0f;
+    if (cam->pitch < -89.0f)
+        cam->pitch = -89.0f;
+
+    glm::vec3 front;
+    front.x = cos(glm::radians(cam->yaw)) * cos(glm::radians(cam->pitch));
+    front.y = sin(glm::radians(cam->pitch));
+    front.z = sin(glm::radians(cam->yaw)) * cos(glm::radians(cam->pitch));
+    cam->front = glm::normalize(front);
+}
+
+
 
 Display::Display()
 {
 	std::cout << "Display constructor" << '\n';
+	_deltaTime = 0.0f;
+	_lastFrame = 0.0f;
 }
 
 Display::~Display()
@@ -47,7 +104,8 @@ void Display::kill()
 
 void Display::update()
 {
-	Shader ourShader("srcs/shaders/vs.gl", "srcs/shaders/fs.gl");
+	this->_camera = Camera::getInstance();
+	Shader ourShader("srcs/shaders/vs.glsl", "srcs/shaders/fs.glsl");
 
 	float vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
@@ -182,8 +240,10 @@ void Display::update()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		
-		processInput(window);
+		float currentFrame = glfwGetTime();
+        _deltaTime = currentFrame - _lastFrame;
+        _lastFrame = currentFrame;		
+		processInput(window, _camera, _deltaTime);
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -194,26 +254,15 @@ void Display::update()
         glBindTexture(GL_TEXTURE_2D, texture2);
 
 
-		float timeValue = glfwGetTime();
-		float red = (sin(timeValue) / 2.0f) + 0.5f;
-		ourShader.setFloat("red", red);
-		glm::mat4 transform = glm::mat4(1);
-        // transform = glm::translate(transform, glm::vec3(0.5f, -0.5f, 0.0f));
-        // transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 1.0f));
-
-		// glm::mat4 model = glm::mat4(1);
-		// model = glm::rotate(model,(float)glfwGetTime() * glm::radians(-55.0f), glm::vec3(1.0f, 0.4f, 0.5f)); 
-		glm::mat4 view = glm::mat4(1);
-		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -5.0f)); 
+		this->_camera->view =  glm::lookAt(this->_camera->pos, this->_camera->pos + this->_camera->front, this->_camera->up);
 		glm::mat4 projection = glm::mat4(1);
-		projection = glm::perspective(glm::radians(70.0f), (float)_width / (float)_height, 0.1f, 100.0f);
+		projection = glm::perspective(glm::radians(80.0f), (float)_width / (float)_height, 0.1f, 100.0f);
 		
 		
 		ourShader.use();
 		// unsigned int transformLoc = glGetUniformLocation(ourShader.ID, "transform");
 		// glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
-		ourShader.setMat4("transform", transform);
-		ourShader.setMat4("view", view);
+		ourShader.setMat4("view", this->_camera->view);
 		// ourShader.setMat4("model", model);
 		ourShader.setMat4("projection", projection);
 
@@ -224,7 +273,7 @@ void Display::update()
             glm::mat4 model = glm::mat4(1);
             model = glm::translate(model, cubePositions[i]);
             float angle = 20.0f * i;
-            model = glm::rotate(model, timeValue * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            model = glm::rotate(model, currentFrame * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             ourShader.setMat4("model", model);
 
             glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -257,6 +306,9 @@ void Display::initialize()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	window = glfwCreateWindow(_width, _height, "Particle System", NULL, NULL);
+	glfwSetWindowPos(window, 700, 100);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
+	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwGetWindowSize(window, &_width, &_height);
 	glfwSetWindowAspectRatio(window, _width, _height);
 	glfwMakeContextCurrent(window);

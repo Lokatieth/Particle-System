@@ -1,11 +1,9 @@
 #ifndef DISPLAY_HPP
 #define DISPLAY_HPP
 
-// #include "glad/glad.h" // include glad to get all the required OpenGL headers
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-// #include "nuklear.h"
 
 #include <string>
 #include <string>
@@ -13,9 +11,8 @@
 #include <sstream>
 #include <vector>
 #include <math.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include "ParticleSystem.hpp"
+#include "Camera.hpp"
 
 class Display
 {
@@ -32,8 +29,11 @@ class Display
 
 	// GLuint _vbo;
 	// GLuint _vao;
+	Camera *_camera;
 	int _width;
 	int _height;
+	float _deltaTime;
+	float _lastFrame;
 	GLFWwindow *window;
 	static Display *_singleton;
 };

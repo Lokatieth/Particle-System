@@ -10,6 +10,7 @@ SRCSPATH = srcs/
 SRCS = 	main.cpp \
 		Display.cpp \
 		Shader.cpp \
+		Camera.cpp \
 		glad.cpp \
 
 LIBS =  -L ${HOME}/.brew/Cellar/glfw/3.2.1/lib -lglfw  \
