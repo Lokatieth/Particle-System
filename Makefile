@@ -9,6 +9,7 @@ SRCSPATH = srcs/
 
 SRCS = 	main.cpp \
 		Display.cpp \
+		ParticleGenerator.cpp \
 		Shader.cpp \
 		Camera.cpp \
 		glad.cpp \

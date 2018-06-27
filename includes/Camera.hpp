@@ -1,4 +1,10 @@
+#ifndef CAMERA_HPP
+#define CAMERA_HPP
+
 #include "ParticleSystem.hpp"
+# include <glm/glm.hpp>
+# include <glm/gtc/matrix_transform.hpp>
+# include <glm/gtc/type_ptr.hpp>
 
 class Camera
 {
@@ -24,3 +30,4 @@ private:
 	~Camera();
 	static Camera *_camelton;
 };
+#endif

@@ -1,10 +1,8 @@
-# include <string>
-# include <iostream>
-# include "Display.hpp"
-# include "cl.hpp"
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#ifndef PARTICLE_SYSTEM_HPP
+#define PARTICLE_SYSTEM_HPP
+
+
 
 // # include <OpenCL/opencl.h>
 // # include <CL/cl.h>
+#endif

@@ -16,10 +16,20 @@
 
 out vec4 FragColor;
 uniform float time;
+uniform sampler2D textureId;
 
-in vec3 fColor;
+
+in vec2 TexCoord;
+in vec4 ParticleColor;
 
 void main()
 {
-    FragColor = vec4(fColor, 1.0);
+	// if(texColor.a < 0.1)
+    //     discard;
+    // FragColor = texture(textureId, TexCoord) * ParticleColor;
+	vec4 texColor = texture(textureId, TexCoord);
+    if(texColor.a < 0.1)
+        discard;
+    FragColor = texColor * ParticleColor;
+    // FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 }
