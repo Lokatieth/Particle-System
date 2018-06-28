@@ -22,16 +22,25 @@ struct Particle {
 class ParticleGenerator
 {
 public:
-	ParticleGenerator(Shader shader, GLuint amount);
+	static ParticleGenerator *getInstance(Shader shader, GLuint amount);
+	static ParticleGenerator *getInstance();
+	static void kill();
 	void Update(GLfloat dt);
 	void Draw();
+	glm::vec3 attractor;
+
 private:
+	// ParticleGenerator();
+	// ~ParticleGenerator();
+  	ParticleGenerator(Shader shader, GLuint amount);
+	float gravity;
 	std::vector<Particle> particles;
 	GLuint amount;
 	unsigned int textureId;
 	Shader shader;
 	GLuint VAO;
 	void init();
+	static ParticleGenerator *_singleton;
 };
 
 #endif

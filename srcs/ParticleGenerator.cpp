@@ -1,6 +1,8 @@
 #include "ParticleGenerator.hpp"
 // #include "stb_image.h"
-
+#include <cstdlib>
+#include <iostream>
+#include <ctime>
 
 Particle::Particle()
 {
@@ -14,22 +16,53 @@ Particle::Particle()
 ParticleGenerator::ParticleGenerator(Shader shader, GLuint amount)
     :  amount(amount), shader(shader)
 {
-    this->init();
+	this->attractor = glm::vec3(0, 0, -1);
+	this->gravity = 0.2;
+	this->init();
+}
+
+ParticleGenerator *ParticleGenerator::getInstance(Shader shader, GLuint amount)
+{
+	if (_singleton == NULL)
+	{
+		std::cout << "Creating Particle Singleton" << '\n';
+		_singleton = new ParticleGenerator(shader, amount);
+	}
+	else
+	{
+		std::cout << "Particle Singleton DUPLICATE" << '\n';
+	}
+	return _singleton;
+}
+
+ParticleGenerator *ParticleGenerator::getInstance()
+{
+	assert(_singleton != NULL);
+	return _singleton;
+}
+
+void ParticleGenerator::kill()
+{
+	if (_singleton != NULL)
+	{
+		delete _singleton;
+		_singleton = NULL;
+	}
 }
 
 void ParticleGenerator::Update(GLfloat dt)
 {
+	std::srand(std::time(nullptr));
 	for (GLuint i = 0; i < amount; ++i)
 	{
-		
+		float rd = 1 + (float)std::rand()/((RAND_MAX + 1u)/40)/100;
 		Particle &p = this->particles[i];
-			float randomiser = (rand() % 100) / 1000 + 0.1;
-			p.Velocity.x += p.Position.x > 0 ? randomiser : -randomiser;
-			p.Velocity.y += p.Position.y > 0 ? randomiser : -randomiser;
-			p.Velocity.z += p.Position.z > 0 ? randomiser : -randomiser;
-			p.Velocity *=  0.999f;
+			p.Velocity.x += p.Position.x - attractor.x > 0 ? gravity * rd : -gravity * rd;
+			p.Velocity.y += p.Position.y - attractor.y > 0 ? gravity * rd : -gravity * rd;
+			p.Velocity.z += p.Position.z - attractor.z > 0 ? gravity * rd : -gravity * rd;
+			p.Velocity *=  0.995f;
 			p.Position -= p.Velocity * dt / 2.0f;
-			p.Color.a = 0.5;
+			p.Color.a = 1;
 	}  
 }
 
@@ -40,7 +73,7 @@ void ParticleGenerator::Draw()
     this->shader.use();
     for (Particle particle : this->particles)
     {
-		this->shader.setVec2("offset", particle.Position);
+		this->shader.setVec3("offset", particle.Position);
 		this->shader.setVec4("color", particle.Color);
 		// this->texture.Bind();
 		glActiveTexture(GL_TEXTURE0);
@@ -100,7 +133,7 @@ void ParticleGenerator::init()
 	// load image, create texture and generate mipmaps
 	int width, height, nrChannels;
 	stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-	unsigned char *data = stbi_load("textures/faggotdog.png", &width, &height, &nrChannels, 0);
+	unsigned char *data = stbi_load("textures/pixie_large.png", &width, &height, &nrChannels, 0);
 	if (data)
 	{
 	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -120,3 +153,5 @@ void ParticleGenerator::init()
     for (GLuint i = 0; i < this->amount; ++i)
         this->particles.push_back(Particle());
 }
+
+ParticleGenerator *ParticleGenerator::_singleton = NULL;

@@ -35,6 +35,7 @@ class Display
 	// GLuint _vbo;
 	// GLuint _vao;
 	Camera *_camera;
+	ParticleGenerator *_particleGenerator;
 	// ParticleGenerator *_particleGenerator;
 	int _width;
 	int _height;

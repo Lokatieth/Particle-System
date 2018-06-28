@@ -10,17 +10,28 @@ layout (location = 1) in vec2 aTexCoord;
 out vec2 TexCoord;
 out vec4 ParticleColor;
 
+
+//MVP
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-uniform vec2 offset;
+// Couleur et position des particules
+uniform vec3 offset;
 uniform vec4 color;	
+
+
+// Pour faire le billboarding
+uniform vec3 CameraRight_worldspace;
+uniform vec3 CameraUp_worldspace;
 
 void main()
 {
-	float scale = 0.1f;
-	gl_Position = projection * view * model * vec4(aPos * scale + vec3(offset, 1.0), 1.0);
+	vec3 fin = CameraRight_worldspace * aPos.x + CameraUp_worldspace * aPos.y;
+
+
+	float scale = 0.01f;
+	gl_Position = projection * view * model * vec4(fin * scale + offset, 1.0);
 	ParticleColor = color;
 	//gl_Position = transform * projection * view * model * vec4(aPos, 1.0);
 	TexCoord = vec2(aTexCoord.x, aTexCoord.y);
