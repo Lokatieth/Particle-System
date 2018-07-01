@@ -4,19 +4,26 @@
 #include <iostream>
 #include <ctime>
 
+
+float lerp(float v0, float v1, float t)
+{
+	return (1 - t) * v0 + t * v1;
+}
+
 Particle::Particle()
 {
 	GLfloat random = ((rand() % 100) - 50) / 10.0f;
     GLfloat rColor = 0.8 + ((rand() % 100) / 100.0f);
-    this->Position = glm::vec3(random, -random, random * random) + random;
+    this->Position = glm::vec3(random, random, random);
     this->Color = glm::vec4(rColor, rColor, rColor, 1.0f);
-    this->Velocity = glm::vec3(random - rColor, random + rColor, random);
+    this->Velocity = glm::vec3(random - rColor, random + rColor, random * rColor);
 }
 
 ParticleGenerator::ParticleGenerator(Shader shader, GLuint amount)
     :  amount(amount), shader(shader)
 {
 	this->attractor = glm::vec3(0, 0, -1);
+	this->retractor = glm::vec3(0, 0, -100);
 	this->gravity = 0.2;
 	this->init();
 }
@@ -50,19 +57,70 @@ void ParticleGenerator::kill()
 	}
 }
 
-void ParticleGenerator::Update(GLfloat dt)
+void ParticleGenerator::provokeImpulse(glm::vec3 impact, bool outwards)
 {
-	std::srand(std::time(nullptr));
+	glm::vec3 dirImpactNormalized;
+	float toImpactLength;
 	for (GLuint i = 0; i < amount; ++i)
 	{
-		float rd = 1 + (float)std::rand()/((RAND_MAX + 1u)/40)/100;
 		Particle &p = this->particles[i];
-			p.Velocity.x += p.Position.x - attractor.x > 0 ? gravity * rd : -gravity * rd;
-			p.Velocity.y += p.Position.y - attractor.y > 0 ? gravity * rd : -gravity * rd;
-			p.Velocity.z += p.Position.z - attractor.z > 0 ? gravity * rd : -gravity * rd;
-			p.Velocity *=  0.995f;
-			p.Position -= p.Velocity * dt / 2.0f;
-			p.Color.a = 1;
+		// Vecteur de l'attractor a la particle
+		if (outwards == true)
+		{
+			dirImpactNormalized = glm::normalize(impact - p.Position);
+			toImpactLength = glm::clamp(glm::length(impact - p.Position), 0.0f, 2.0f) / 2;
+		}
+		else
+		{
+
+			dirImpactNormalized = glm::normalize(p.Position - impact);
+			toImpactLength = glm::clamp(glm::length(p.Position - impact), 0.0f, 2.0f) / 2;
+		}
+		p.Velocity += dirImpactNormalized * (1 - toImpactLength) * (1 - toImpactLength) * 3.0f;
+
+	}
+}
+
+
+
+
+void ParticleGenerator::Update(GLfloat dt)
+{
+	this->maxDist = 0;
+	std::srand(std::time(nullptr));
+	for (GLuint i = 0; i < this->amount; ++i)
+	{
+		Particle &p = this->particles[i];
+		glm::vec3 distAttractor = p.Position - attractor;
+		float distToAttr = glm::clamp(glm::length(distAttractor), 0.0f, 10.0f);
+		gravity = (distToAttr / 10);
+		p.Velocity.x += distAttractor.x > 0 ? gravity : -gravity;
+		p.Velocity.y += distAttractor.y > 0 ? gravity : -gravity;
+		p.Velocity.z += distAttractor.z > 0 ? gravity : -gravity;
+
+		glm::vec3 distRetractor = p.Position - retractor;
+		float distToRetr = glm::clamp(glm::length(distRetractor), 0.0f, 1.0f);
+		gravity = (1 -  distToRetr) / 10;
+		p.Velocity.x += distRetractor.x < 0 ? gravity : -gravity;
+		p.Velocity.y += distRetractor.y < 0 ? gravity : -gravity;
+		p.Velocity.z += distRetractor.z < 0 ? gravity : -gravity;
+		if (i == 400)
+			std::cout << "Distance to retractor is " << distToRetr  << '\n';
+
+
+
+
+		float velocityLength = glm::length(p.Velocity);
+		this->maxDist = velocityLength > maxDist ? velocityLength : maxDist;
+		p.Velocity *=  0.99f;
+		p.Position -= p.Velocity * dt / 2.0f;
+
+		float Ratio = (velocityLength / this->maxDist);
+
+		p.Color.x = 1 - (Ratio* Ratio);
+		p.Color.z = Ratio;
+		p.Color.y = (1 - Ratio);
+		p.Color.a = 1;
 	}  
 }
 
@@ -75,7 +133,6 @@ void ParticleGenerator::Draw()
     {
 		this->shader.setVec3("offset", particle.Position);
 		this->shader.setVec4("color", particle.Color);
-		// this->texture.Bind();
 		glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, this->textureId);
 		glBindVertexArray(this->VAO);
@@ -133,7 +190,8 @@ void ParticleGenerator::init()
 	// load image, create texture and generate mipmaps
 	int width, height, nrChannels;
 	stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-	unsigned char *data = stbi_load("textures/pixie_large.png", &width, &height, &nrChannels, 0);
+	unsigned char *data = stbi_load("textures/faggotdog.png", &width, &height, &nrChannels, 0);
+	// unsigned char *data = stbi_load("textures/pixie_large.png", &width, &height, &nrChannels, 0);
 	if (data)
 	{
 	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);

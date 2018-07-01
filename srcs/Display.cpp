@@ -9,15 +9,9 @@ void processInput(GLFWwindow *window, Camera *camera, float delta)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-	{
 		modifier = 10.0f;
-		std::cout << "voooom" << '\n';
-	}
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE)
-	{
 		modifier = 1.0f;
-		std::cout << "hiiii" << '\n';
-	}
 	float cameraSpeed = 2 * delta * modifier; // adjust accordingly
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera->pos += cameraSpeed * camera->front;
@@ -27,20 +21,39 @@ void processInput(GLFWwindow *window, Camera *camera, float delta)
         camera->pos -= glm::normalize(glm::cross(camera->front, camera->up)) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera->pos += glm::normalize(glm::cross(camera->front, camera->up)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		camera->pos += glm::vec3(0, 1, 0) * cameraSpeed;
+	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+        camera->pos -= glm::vec3(0, 1, 0) * cameraSpeed;
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+	{
+		ParticleGenerator *gen;
+		gen = ParticleGenerator::getInstance();
+		gen->attractor = glm::vec3(camera->pos + camera->front);
+	}
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+	{
+		ParticleGenerator *gen;
+		gen = ParticleGenerator::getInstance();
+		gen->retractor = glm::vec3(camera->pos + camera->front);
+	}
 }
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	(void)mods;
+	Camera *cam;
+	ParticleGenerator *gen;
+	gen = ParticleGenerator::getInstance();
+	cam = Camera::getInstance();
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
-		Camera *cam;
-		cam = Camera::getInstance();
-		ParticleGenerator *gen;
-		gen = ParticleGenerator::getInstance();
-		std::cout << "So far so good" << '\n';
-		gen->attractor = glm::vec3(cam->pos + cam->front );
+		gen->provokeImpulse(cam->pos + cam->front, false);
+	}
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+	{
+		gen->provokeImpulse(cam->pos + cam->front, true);
 	}
 }
 
@@ -135,7 +148,7 @@ void Display::update()
 
 	Shader ourShader("srcs/shaders/vs.glsl", "srcs/shaders/fs.glsl");
 
-	this->_particleGenerator = ParticleGenerator::getInstance(ourShader, 15000);
+	this->_particleGenerator = ParticleGenerator::getInstance(ourShader, 10000);
 	// ParticleGenerator generator(ourShader, 5000);
     srand(glfwGetTime()); // initialize random seed	
 	while (!glfwWindowShouldClose(window))
@@ -143,6 +156,10 @@ void Display::update()
 		float currentFrame = glfwGetTime();
         _deltaTime = currentFrame - _lastFrame;
         _lastFrame = currentFrame;		
+		float fps = 1 / _deltaTime;
+		std::ostringstream newTitle("Fps :");
+		newTitle << fps;
+		glfwSetWindowTitle(window, newTitle.str().c_str());
 		processInput(window, _camera, _deltaTime);
 
 		// glClearColor(0.2f, 0.3f, 0.3f, 1.0f);

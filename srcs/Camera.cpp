@@ -6,8 +6,8 @@ Camera::Camera() : pos(glm::vec3(0, 0, -3)), front(glm::vec3(0, 0, 1)), up(glm::
 	// view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), 
   	// 	   glm::vec3(0.0f, 0.0f, 0.0f), 
   	// 	   glm::vec3(0.0f, 1.0f, 0.0f));
-	lastX = 840;
-	lastY = 630;
+	lastX = 0;
+	lastY = 0;
 	firstMouse = true;
 }
 

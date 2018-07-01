@@ -25,9 +25,12 @@ public:
 	static ParticleGenerator *getInstance(Shader shader, GLuint amount);
 	static ParticleGenerator *getInstance();
 	static void kill();
+	void provokeImpulse(glm::vec3 impact, bool outwards);
 	void Update(GLfloat dt);
 	void Draw();
 	glm::vec3 attractor;
+	glm::vec3 retractor;
+	float maxDist;
 
 private:
 	// ParticleGenerator();
