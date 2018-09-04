@@ -1,5 +1,5 @@
 NAME = part_sys
-FLAGS = -std=c++11 -Wall -Wextra -Werror -g 
+FLAGS = -std=c++11 -Wall -Wextra -Werror -g -O2 -std=gnu++0x
 
 
 INCLUDE = -I includes \
@@ -13,6 +13,7 @@ SRCS = 	main.cpp \
 		Shader.cpp \
 		Camera.cpp \
 		glad.cpp \
+		ClContext.cpp \
 
 LIBS =  -L ${HOME}/.brew/Cellar/glfw/3.2.1/lib -lglfw  \
 		-L ${HOME}/.brew/Cellar/glew/2.1.0/lib -lGLEW  \

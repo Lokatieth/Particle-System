@@ -23,10 +23,6 @@ Camera *Camera::getInstance()
 		std::cout << "creating camera singleton" << '\n';
 		_camelton = new Camera();
 	}
-	else
-	{
-		// std::cout << "Camera singleton already created, passing pointer to it" << '\n';
-	}
 	return _camelton;
 
 }

@@ -10,21 +10,15 @@ float lerp(float v0, float v1, float t)
 	return (1 - t) * v0 + t * v1;
 }
 
-Particle::Particle()
-{
-	GLfloat random = ((rand() % 100) - 50) / 10.0f;
-    GLfloat rColor = 0.8 + ((rand() % 100) / 100.0f);
-    this->Position = glm::vec3(random, random, random);
-    this->Color = glm::vec4(rColor, rColor, rColor, 1.0f);
-    this->Velocity = glm::vec3(random - rColor, random + rColor, random * rColor);
-}
 
 ParticleGenerator::ParticleGenerator(Shader shader, GLuint amount)
     :  amount(amount), shader(shader)
 {
 	this->attractor = glm::vec3(0, 0, -1);
-	this->retractor = glm::vec3(0, 0, -100);
-	this->gravity = 0.2;
+	this->retractor = {{0, 0, -100}};
+	this->gravity = 1;
+
+	
 	this->init();
 }
 
@@ -57,6 +51,22 @@ void ParticleGenerator::kill()
 	}
 }
 
+void ParticleGenerator::stop()
+{
+	this->gravity = 0;
+	for (GLuint i = 0; i < amount; ++i)
+	{
+		Particle &p = this->particles[i];
+		p.Velocity = glm::vec3(0, 0, 0);
+	}
+
+}
+
+void ParticleGenerator::resume()
+{
+	this->gravity = 1;
+}
+
 void ParticleGenerator::provokeImpulse(glm::vec3 impact, bool outwards)
 {
 	glm::vec3 dirImpactNormalized;
@@ -65,22 +75,22 @@ void ParticleGenerator::provokeImpulse(glm::vec3 impact, bool outwards)
 	{
 		Particle &p = this->particles[i];
 		// Vecteur de l'attractor a la particle
-		if (outwards == true)
+		if (outwards == true) // On pousse les particules
 		{
 			dirImpactNormalized = glm::normalize(impact - p.Position);
-			toImpactLength = glm::clamp(glm::length(impact - p.Position), 0.0f, 2.0f) / 2;
+			toImpactLength = glm::clamp(glm::length(impact - p.Position), 0.0f, 1.0f);
 		}
-		else
+		else // On attire
 		{
-
+			// if (i == 400)
+			// 	std::cout << "ca pousse waahhh\n";
 			dirImpactNormalized = glm::normalize(p.Position - impact);
-			toImpactLength = glm::clamp(glm::length(p.Position - impact), 0.0f, 2.0f) / 2;
+			toImpactLength = glm::clamp(glm::length(p.Position - impact), 0.0f, 2.0f);
 		}
-		p.Velocity += dirImpactNormalized * (1 - toImpactLength) * (1 - toImpactLength) * 3.0f;
+		p.Velocity += dirImpactNormalized * (1 - toImpactLength) * (1 - toImpactLength) * 3.0f / 10.0f;
 
 	}
 }
-
 
 
 
@@ -90,37 +100,66 @@ void ParticleGenerator::Update(GLfloat dt)
 	std::srand(std::time(nullptr));
 	for (GLuint i = 0; i < this->amount; ++i)
 	{
+		float acc;
 		Particle &p = this->particles[i];
 		glm::vec3 distAttractor = p.Position - attractor;
-		float distToAttr = glm::clamp(glm::length(distAttractor), 0.0f, 10.0f);
-		gravity = (distToAttr / 10);
-		p.Velocity.x += distAttractor.x > 0 ? gravity : -gravity;
-		p.Velocity.y += distAttractor.y > 0 ? gravity : -gravity;
-		p.Velocity.z += distAttractor.z > 0 ? gravity : -gravity;
+		cl_float3 distAttractor;
+		distAttractor.v4 = ticlePos.v4 - retractor.v4;
 
-		glm::vec3 distRetractor = p.Position - retractor;
-		float distToRetr = glm::clamp(glm::length(distRetractor), 0.0f, 1.0f);
-		gravity = (1 -  distToRetr) / 10;
-		p.Velocity.x += distRetractor.x < 0 ? gravity : -gravity;
-		p.Velocity.y += distRetractor.y < 0 ? gravity : -gravity;
-		p.Velocity.z += distRetractor.z < 0 ? gravity : -gravity;
-		if (i == 400)
-			std::cout << "Distance to retractor is " << distToRetr  << '\n';
+		float distToAttr = glm::clamp(glm::length(distAttractor), 0.0f, 10.0f);
+
+		acc = this->gravity * (distToAttr / 10);
+		p.Velocity.x += distAttractor.x > 0 ? acc : -acc;
+		p.Velocity.y += distAttractor.y > 0 ? acc : -acc;
+		p.Velocity.z += distAttractor.z > 0 ? acc : -acc;
+
+		cl_float3 ticlePos = {{p.Position.x, p.Position.y, p.Position.z}};
+		cl_float3 distRetractor;
+
+		distRetractor.v4 = ticlePos.v4 - retractor.v4;
+		float distToRetr;
+		distToRetr = ClContext::length_f3(distRetractor);
+
+		// if (i == 400)
+		// {
+		// 	std::cout << " distToRetr CL " << distToRetr  << '\n';
+		// }
+
+		acc = this->gravity * (1 -  distToRetr) / 10;
+		p.Velocity.x += distRetractor.x < 0 ? acc : -acc;
+		p.Velocity.y += distRetractor.y < 0 ? acc : -acc;
+		p.Velocity.z += distRetractor.z < 0 ? acc : -acc;
+
+		// float distToRetr = glm::clamp(glm::length(distRetractor), 0.0f, 1.0f);
+		// acc = this->gravity * (1 -  distToRetr) / 10;
+		// p.Velocity.x += distRetractor.x < 0 ? acc : -acc;
+		// p.Velocity.y += distRetractor.y < 0 ? acc : -acc;
+		// p.Velocity.z += distRetractor.z < 0 ? acc : -acc;
 
 
 
 
 		float velocityLength = glm::length(p.Velocity);
-		this->maxDist = velocityLength > maxDist ? velocityLength : maxDist;
-		p.Velocity *=  0.99f;
+		// this->maxDist = velocityLength > maxDist ? velocityLength : maxDist;
+			// std::cout << "Distance to retractor is " << distToRetr  << '\n';
+		p.Velocity *=  0.98f;
 		p.Position -= p.Velocity * dt / 2.0f;
 
-		float Ratio = (velocityLength / this->maxDist);
+		// float Ratio = (velocityLength / fmax(this->maxDist, 1));
+		float Ratio = glm::clamp(velocityLength / 3, 0.f, 1.f);
+		// if (i == 400)
+		// {
+		// 	std::cout << "Velocity is " << velocityLength  << '\n';
+		// 	std::cout << "maxdist is " << this->maxDist  << '\n';
+		// }
 
-		p.Color.x = 1 - (Ratio* Ratio);
-		p.Color.z = Ratio;
-		p.Color.y = (1 - Ratio);
-		p.Color.a = 1;
+		p.Color.x = (1 - Ratio) * (1 - Ratio);
+		p.Color.y = 0.1 + 0.9 * (Ratio / 2);
+		p.Color.z = 0.1 + 0.9 * (Ratio );
+		// p.Color.x = 1 - (Ratio* );
+		// p.Color.z = Ratio;
+		// p.Color.y = Ratio;
+		// p.Color.a = 1;
 	}  
 }
 
@@ -151,12 +190,12 @@ void ParticleGenerator::init()
     GLuint VBO;
     float particle_quad[] = {
         // positions     // uv
-         -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         -0.10f, -0.10f,  0.10f,  0.0f, 0.0f,
+         0.10f, -0.10f,  0.10f,  1.0f, 0.0f,
+         0.10f,  0.10f,  0.10f,  1.0f, 1.0f,
+         0.10f,  0.10f,  0.10f,  1.0f, 1.0f,
+        -0.10f,  0.10f,  0.10f,  0.0f, 1.0f,
+        -0.10f, -0.10f,  0.10f,  0.0f, 0.0f,
     };
     glGenVertexArrays(1, &this->VAO);
     glGenBuffers(1, &VBO);
@@ -190,8 +229,8 @@ void ParticleGenerator::init()
 	// load image, create texture and generate mipmaps
 	int width, height, nrChannels;
 	stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-	unsigned char *data = stbi_load("textures/faggotdog.png", &width, &height, &nrChannels, 0);
-	// unsigned char *data = stbi_load("textures/pixie_large.png", &width, &height, &nrChannels, 0);
+	unsigned char *data = stbi_load("textures/1by1.png", &width, &height, &nrChannels, 0);
+	// unsigned char *data = stbi_load("textures/faggotdog.png", &width, &height, &nrChannels, 0);
 	if (data)
 	{
 	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -210,6 +249,15 @@ void ParticleGenerator::init()
     // Create this->amount default particle instances
     for (GLuint i = 0; i < this->amount; ++i)
         this->particles.push_back(Particle());
+	for (GLuint i = 0; i < amount; ++i)
+	{
+		Particle &p = this->particles[i];
+		GLfloat random = ((rand() % 100) - 50) / 10.0f;
+		GLfloat rColor = 0.8 + ((rand() % 100) / 100.0f);
+		p.Position = glm::vec3(i/5000, i/2500, random *0.03);
+		p.Color = glm::vec4(rColor, rColor, rColor, 1.0f);
+		p.Velocity = glm::vec3(random - rColor, random + rColor, random * rColor);
+	}
 }
 
 ParticleGenerator *ParticleGenerator::_singleton = NULL;
