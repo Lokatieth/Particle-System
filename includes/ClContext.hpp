@@ -27,6 +27,7 @@ public:
 	static void kill();
 	static cl_float length_f3(cl_float3 vec);
 
+	void calculateAttraction(ClParticle *array, ClParticle *result, const float delta, const cl_float3 attractor, const cl_float3 retractor);
 	cl::Platform default_platform;
 	cl::Device default_device;
 	cl::Context context;

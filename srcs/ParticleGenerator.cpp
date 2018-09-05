@@ -15,7 +15,7 @@ ParticleGenerator::ParticleGenerator(Shader shader, GLuint amount)
     :  amount(amount), shader(shader)
 {
 	this->attractor = glm::vec3(0, 0, -1);
-	this->retractor = {{0, 0, -100}};
+	this->retractor = {{0, 0, 0}};
 	this->gravity = 1;
 
 	
@@ -98,69 +98,105 @@ void ParticleGenerator::Update(GLfloat dt)
 {
 	this->maxDist = 0;
 	std::srand(std::time(nullptr));
-	for (GLuint i = 0; i < this->amount; ++i)
-	{
-		float acc;
-		Particle &p = this->particles[i];
-		glm::vec3 distAttractor = p.Position - attractor;
-		cl_float3 distAttractor;
-		distAttractor.v4 = ticlePos.v4 - retractor.v4;
+	this->ClContext = ClContext::getInstance();
+	cl_float3 attrac = cl_float3 {{0, 0, -2}};
 
-		float distToAttr = glm::clamp(glm::length(distAttractor), 0.0f, 10.0f);
+	// (void)dt;
+	// ClParticle tantpis[15000];
+	this->ClContext->calculateAttraction(this->particleArray, this->particleArray, dt, attrac, this->retractor);
 
-		acc = this->gravity * (distToAttr / 10);
-		p.Velocity.x += distAttractor.x > 0 ? acc : -acc;
-		p.Velocity.y += distAttractor.y > 0 ? acc : -acc;
-		p.Velocity.z += distAttractor.z > 0 ? acc : -acc;
 
-		cl_float3 ticlePos = {{p.Position.x, p.Position.y, p.Position.z}};
-		cl_float3 distRetractor;
+	// for (GLuint i = 0; i < this->amount; ++i)
+	// {
+	// 	Particle &p = this->particles[i];
+	// 	ClParticle &cl = this->particleArray[i];
 
-		distRetractor.v4 = ticlePos.v4 - retractor.v4;
-		float distToRetr;
-		distToRetr = ClContext::length_f3(distRetractor);
-
-		// if (i == 400)
-		// {
-		// 	std::cout << " distToRetr CL " << distToRetr  << '\n';
-		// }
-
-		acc = this->gravity * (1 -  distToRetr) / 10;
-		p.Velocity.x += distRetractor.x < 0 ? acc : -acc;
-		p.Velocity.y += distRetractor.y < 0 ? acc : -acc;
-		p.Velocity.z += distRetractor.z < 0 ? acc : -acc;
-
-		// float distToRetr = glm::clamp(glm::length(distRetractor), 0.0f, 1.0f);
-		// acc = this->gravity * (1 -  distToRetr) / 10;
-		// p.Velocity.x += distRetractor.x < 0 ? acc : -acc;
-		// p.Velocity.y += distRetractor.y < 0 ? acc : -acc;
-		// p.Velocity.z += distRetractor.z < 0 ? acc : -acc;
+	// 	p.Velocity.x = cl.Velocity.x;
+	// 	p.Velocity.y = cl.Velocity.y;
+	// 	p.Velocity.z = cl.Velocity.z;
+	// 	p.Position.x = cl.Position.x;
+	// 	p.Position.y = cl.Position.y;
+	// 	p.Position.z = cl.Position.z;
+	// 	p.Color.x = cl.Color.x;
+	// 	p.Color.y = cl.Color.y;
+	// 	p.Color.z = cl.Color.z;
+	// 	p.Color.w = cl.Color.w;
+	// }
+	// for (int i = 0; i < 2; i++)
+	// {
+	// 	std::cout << "Position de array = {" << this->particleArray[i].Position.x << ", " << this->particleArray[i].Position.y << ", " << this->particleArray[i].Position.z << "} \n";
+	// 	std::cout << "Velocity de this->particleArray = {" << this->particleArray[i].Velocity.x << ", " << this->particleArray[i].Velocity.y << ", " << this->particleArray[i].Velocity.z << "} \n";
+	// 	std::cout << "Color de this->particleArray = {" << this->particleArray[i].Color.x << ", " << this->particleArray[i].Color.y << ", " << this->particleArray[i].Color.z << "} \n";
+	// 	std::cout << "--------------------------------------------------------\n\n";
+	// }
 
 
 
+	// for (GLuint i = 0; i < this->amount; ++i)
+	// {
+	// 	float acc;
+	// 	Particle &p = this->particles[i];
+	// 	glm::vec3 distAttractor = p.Position - attractor;
+	// 	float distToAttr = glm::clamp(glm::length(distAttractor), 0.0f, 10.0f);
 
-		float velocityLength = glm::length(p.Velocity);
-		// this->maxDist = velocityLength > maxDist ? velocityLength : maxDist;
-			// std::cout << "Distance to retractor is " << distToRetr  << '\n';
-		p.Velocity *=  0.98f;
-		p.Position -= p.Velocity * dt / 2.0f;
+	// 	acc = this->gravity * (distToAttr / 10);
+	// 	p.Velocity.x += distAttractor.x > 0 ? acc : -acc;
+	// 	p.Velocity.y += distAttractor.y > 0 ? acc : -acc;
+	// 	p.Velocity.z += distAttractor.z > 0 ? acc : -acc;
 
-		// float Ratio = (velocityLength / fmax(this->maxDist, 1));
-		float Ratio = glm::clamp(velocityLength / 3, 0.f, 1.f);
-		// if (i == 400)
-		// {
-		// 	std::cout << "Velocity is " << velocityLength  << '\n';
-		// 	std::cout << "maxdist is " << this->maxDist  << '\n';
-		// }
+	// 	cl_float3 ticlePos = {{p.Position.x, p.Position.y, p.Position.z}};
+	// 	cl_float3 distRetractor;
 
-		p.Color.x = (1 - Ratio) * (1 - Ratio);
-		p.Color.y = 0.1 + 0.9 * (Ratio / 2);
-		p.Color.z = 0.1 + 0.9 * (Ratio );
-		// p.Color.x = 1 - (Ratio* );
-		// p.Color.z = Ratio;
-		// p.Color.y = Ratio;
-		// p.Color.a = 1;
-	}  
+	// 	distRetractor.v4 = ticlePos.v4 - retractor.v4;
+	// 	float distToRetr;
+	// 	distToRetr = ClContext::length_f3(distRetractor);
+
+	// 	// distToRetr = glm::clamp(glm::length(distRetractor), 0.0f, 1.0f);
+	// 	// if (i == 400)
+	// 	// {
+	// 	// 	std::cout << " distToRetr CL " << distoRetr  << '\n';
+	// 	// 	std::cout << " distToRetr Legit " << distoRetr  << '\n';
+	// 	// }
+
+
+	// 	acc = this->gravity * (1 -  distToRetr) / 10;
+	// 	p.Velocity.x += distRetractor.x < 0 ? acc : -acc;
+	// 	p.Velocity.y += distRetractor.y < 0 ? acc : -acc;
+	// 	p.Velocity.z += distRetractor.z < 0 ? acc : -acc;
+
+	// 	// float distToRetr = glm::clamp(glm::length(distRetractor), 0.0f, 1.0f);
+	// 	// acc = this->gravity * (1 -  distToRetr) / 10;
+	// 	// p.Velocity.x += distRetractor.x < 0 ? acc : -acc;
+	// 	// p.Velocity.y += distRetractor.y < 0 ? acc : -acc;
+	// 	// p.Velocity.z += distRetractor.z < 0 ? acc : -acc;
+
+
+
+
+	// 	float velocityLength = glm::length(p.Velocity);
+	// 	// this->maxDist = velocityLength > maxDist ? velocityLength : maxDist;
+	// 		// std::cout << "Distance to retractor is " << distToRetr  << '\n';
+	// 	p.Velocity *=  0.98f;
+	// 	p.Position -= p.Velocity * dt / 2.0f;
+
+	// 	// float Ratio = (velocityLength / fmax(this->maxDist, 1));
+	// 	float Ratio = glm::clamp(velocityLength / 3, 0.f, 1.f);
+	// 	// if (i == 400)
+	// 	// {
+	// 	// 	std::cout << "Velocity is " << velocityLength  << '\n';
+	// 	// 	std::cout << "maxdist is " << this->maxDist  << '\n';
+	// 	// }
+
+	// 	p.Color.x = (1 - Ratio) * (1 - Ratio);
+	// 	p.Color.y = 0.1 + 0.9 * (Ratio / 2);
+	// 	p.Color.z = 0.1 + 0.9 * (Ratio );
+	// 	// p.Color.x = 1 - (Ratio* );
+	// 	// p.Color.z = Ratio;
+	// 	// p.Color.y = Ratio;
+	// 	// p.Color.a = 1;
+	// }  
+
+
 }
 
 // Render all particles
@@ -255,8 +291,19 @@ void ParticleGenerator::init()
 		GLfloat random = ((rand() % 100) - 50) / 10.0f;
 		GLfloat rColor = 0.8 + ((rand() % 100) / 100.0f);
 		p.Position = glm::vec3(i/5000, i/2500, random *0.03);
-		p.Color = glm::vec4(rColor, rColor, rColor, 1.0f);
 		p.Velocity = glm::vec3(random - rColor, random + rColor, random * rColor);
+		p.Color = glm::vec4(rColor, rColor, rColor, 1.0f);
+	}
+	this->particleArray = new ClParticle[this->amount];
+
+	for (GLuint i = 0; i < amount; ++i)
+	{
+		// GLfloat random = ((rand() % 100) - 50) / 10.0f;
+		// GLfloat rColor = 0.8 + ((rand() % 100) / 100.0f);
+		// this->particleArray[i].Position = cl_float3 {{ static_cast<cl_float>(i / 5000),  static_cast<cl_float>(i / 2500), static_cast<cl_float>(random * 0.03)}};
+		this->particleArray[i].Position = cl_float3 {{ static_cast<cl_float>(i),  static_cast<cl_float>(i * 2), static_cast<cl_float>(3)}};
+		// this->particleArray[i].Velocity = cl_float3 {{0, 0, 0}};
+		// this->particleArray[i].Color = cl_float4 {{rColor, rColor, rColor, 1.0f}};
 	}
 }
 

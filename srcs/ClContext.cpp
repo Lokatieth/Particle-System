@@ -36,6 +36,57 @@ void ClContext::kill()
 	}
 }
 
+
+void ClContext::calculateAttraction(
+	ClParticle *array,
+	ClParticle *result,
+	const float delta,
+	const cl_float3 attractor, 
+	const cl_float3 retractor)
+{
+
+
+	
+	
+
+	cl::Buffer buffer_part(context, CL_MEM_READ_WRITE, sizeof(ClParticle) * 15000);
+	cl::Buffer buffer_result(context, CL_MEM_READ_WRITE, sizeof(ClParticle) * 15000);
+	//create queue to which we will push commands for the device.
+	cl::CommandQueue queue(context, default_device);
+	//write arrays A and B to the device
+	queue.enqueueWriteBuffer(buffer_part, CL_TRUE, 0, sizeof(ClParticle) * 15000, array);
+	queue.enqueueWriteBuffer(buffer_result, CL_TRUE, 0, sizeof(ClParticle) * 15000, result);
+	// queue.enqueueWriteBuffer(buffer_dt, CL_TRUE, 0, sizeof(float), delta);
+	// queue.enqueueWriteBuffer(buffer_att, CL_TRUE, 0, sizeof(cl_float3), att);
+	// queue.enqueueWriteBuffer(buffer_ret, CL_TRUE, 0, sizeof(cl_float3), ret);
+
+
+	//alternative way to run the kernel
+	cl::Kernel kernel_add = cl::Kernel(program, "particle_update");
+	kernel_add.setArg(0, *array);
+	kernel_add.setArg(1, *result);
+	kernel_add.setArg(2, delta);
+	kernel_add.setArg(3, attractor);
+	kernel_add.setArg(4, retractor);
+	queue.enqueueNDRangeKernel(kernel_add, cl::NullRange, cl::NDRange(15000), cl::NullRange);
+	queue.finish();
+
+	//read result C from the device to array C
+	queue.enqueueReadBuffer(buffer_result, CL_TRUE, 0, sizeof(ClParticle) * 15000, result);
+
+
+	std::cout << " result: \n";
+	for (int i = 0; i < 10; i++)
+	{
+		std::cout << "Position de array = {" << result[i].Position.x << ", " << result[i].Position.y << ", " << result[i].Position.z << "} \n";
+		std::cout << "Velocity de result = {" << result[i].Velocity.x << ", " << result[i].Velocity.y << ", " << result[i].Velocity.z << "} \n";
+		std::cout << "Color de result = {" << result[i].Color.x << ", " << result[i].Color.y << ", " << result[i].Color.z << "} \n";
+		std::cout << "--------------------------------------------------------\n\n";
+	}
+
+
+}
+
 ClContext::~ClContext()
 {
 	std::cout << "ClContext destructor" << '\n';
@@ -66,21 +117,59 @@ ClContext::ClContext()
 
 	this->context = cl::Context({default_device});
 
-	// kernel calculates for each element C=A+B
 	this->kernel_code =
-	"typedef struct __attribute__ ((packed)) _Cl_Particle"
-	"{"
-    "	float3 Position;"
-	"	float3 Velocity;"
-    "	float4 Color;"
-	"} ClParticle;"
-	"   void kernel simple_add(global const ClParticle *A, global const ClParticle *B, global ClParticle *C){       "
-	"	int i = get_global_id(0);"
-	"       C[i].Position = A[i].Position + B[i].Position;"
-	"       C[i].Velocity = A[i].Velocity + B[i].Velocity;"
-	"       C[i].Color = A[i].Color + B[i].Color;"
-	"   }      ";
-	this->sources.push_back({this->kernel_code.c_str(), this->kernel_code.length()});
+		"typedef struct __attribute__ ((packed)) Cl_Particle"
+		"{"
+	    "	float3 Position;"
+		"	float3 Velocity;"
+	    "	float4 Color;"
+		"} ClParticle;"
+		
+
+		"static float f3_length(float3 vec)"
+		"{"
+		"	return (sqrtf(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z));"
+		"}"
+
+		"void kernel particle_update("
+		"	global ClParticle *P,"
+		"	global ClParticle *R,"
+		"	 float const dt,"
+		"	 const float3 attractor,"
+		"	 const float3 retractor ){       "
+
+
+		"		int i = get_global_id(0);"
+		"		float acc;"
+		"		float distToAttr;"
+		"		float velocityLength;"
+		"		float speedRatio;"
+		"		float3 distAttractor;"
+
+		"		distAttractor = P[i].Position - attractor; "
+		"		distToAttr = f3_length(distAttractor);"
+		"		acc = 2 * (distToAttr / 10);"
+
+		// "		R[i].Velocity.x = (P[i].Velocity.x + (distAttractor.x > 0 ? acc : -acc)) * 0.98;"
+		// "		R[i].Velocity.y = (P[i].Velocity.y + (distAttractor.y > 0 ? acc : -acc)) * 0.98;"
+		// "		R[i].Velocity.z = (P[i].Velocity.z + (distAttractor.z > 0 ? acc : -acc)) * 0.98;"
+
+
+		"  		R[i].Velocity.x = 10;"
+		"		R[i].Velocity.y = 10;"
+		"		R[i].Velocity.z = 10;"
+
+		"		velocityLength = f3_length(P[i].Velocity);"
+
+		"		R[i].Position = P[i].Position - (P[i].Velocity * dt / 2.0f);"
+
+		"		speedRatio = velocityLength / 3;"
+
+		"		R[i].Color.x = (1 - speedRatio) * (1 - speedRatio);"
+		"		R[i].Color.y = 0.1 + 0.9 * (speedRatio / 2);"
+		"		R[i].Color.z = 0.1 + 0.9 * (speedRatio);"
+		"   }      ";
+		this->sources.push_back({this->kernel_code.c_str(), this->kernel_code.length()});
 
 	cl::Program program(context, this->sources);
 	if (program.build({default_device}) != CL_SUCCESS)
@@ -89,73 +178,8 @@ ClContext::ClContext()
 		exit(1);
 	}
 
-	ClParticle arrParticlesA[10];
-	for (int i = 0; i < 10; i++)
-	{
-		arrParticlesA[i].Position.x = 50 * i + 0;
-		arrParticlesA[i].Position.y = 50 * i + 1;
-		arrParticlesA[i].Position.z = 50 * i + 2;
-		arrParticlesA[i].Velocity.x = 50 * i + 3;
-		arrParticlesA[i].Velocity.y = 50 * i + 4;
-		arrParticlesA[i].Velocity.z = 50 * i + 5;
-		arrParticlesA[i].Color.x = 50 * i + 6;
-		arrParticlesA[i].Color.y = 50 * i + 7;
-		arrParticlesA[i].Color.z = 50 * i + 8;
-		arrParticlesA[i].Color.w = 50 * i + 9;
-	}
-
-	ClParticle arrParticlesB[10];
-	for (int i = 0; i < 10; i++)
-	{
-		arrParticlesB[i].Position.x = 50 * i + 10;
-		arrParticlesB[i].Position.y = 50 * i + 11;
-		arrParticlesB[i].Position.z = 50 * i + 12;
-		arrParticlesB[i].Velocity.x = 50 * i + 13;
-		arrParticlesB[i].Velocity.y = 50 * i + 14;
-		arrParticlesB[i].Velocity.z = 50 * i + 15;
-		arrParticlesB[i].Color.x = 50 * i + 16;
-		arrParticlesB[i].Color.y = 50 * i + 17;
-		arrParticlesB[i].Color.z = 50 * i + 18;
-		arrParticlesB[i].Color.w = 50 * i + 19;
-	}
-
-	// create buffers on the device
-	cl::Buffer buffer_A(context, CL_MEM_READ_WRITE, sizeof(ClParticle) * 10);
-	cl::Buffer buffer_B(context, CL_MEM_READ_WRITE, sizeof(ClParticle) * 10);
-	cl::Buffer buffer_C(context, CL_MEM_READ_WRITE, sizeof(ClParticle) * 10);
-
-
-
-	//create queue to which we will push commands for the device.
-	cl::CommandQueue queue(context, default_device);
-
-	//write arrays A and B to the device
-	queue.enqueueWriteBuffer(buffer_A, CL_TRUE, 0, sizeof(ClParticle) * 10, arrParticlesA);
-	queue.enqueueWriteBuffer(buffer_B, CL_TRUE, 0, sizeof(ClParticle) * 10, arrParticlesB);
-
-
-	//alternative way to run the kernel
-	cl::Kernel kernel_add = cl::Kernel(program, "simple_add");
-	kernel_add.setArg(0, buffer_A);
-	kernel_add.setArg(1, buffer_B);
-	kernel_add.setArg(2, buffer_C);
-	queue.enqueueNDRangeKernel(kernel_add, cl::NullRange, cl::NDRange(10), cl::NullRange);
-	queue.finish();
-
-	ClParticle C[10];
-	//read result C from the device to array C
-	queue.enqueueReadBuffer(buffer_C, CL_TRUE, 0, sizeof(ClParticle) * 10, C);
-
-	C[1].Position.v4 = C[2].Position.v4 + C[1].Position.v4;
-
-	std::cout << " result: \n";
-	// for (int i = 0; i < 10; i++)
-	// {
-	// 	std::cout << "Position de C = {" << C[i].Position.x << ", " << C[i].Position.y << ", " << C[i].Position.z << "} \n";
-	// 	std::cout << "Velocity de C = {" << C[i].Velocity.x << ", " << C[i].Velocity.y << ", " << C[i].Velocity.z << "} \n";
-	// 	std::cout << "Color de C = {" << C[i].Color.x << ", " << C[i].Color.y << ", " << C[i].Color.z << "} \n";
-	// 	std::cout << "--------------------------------------------------------\n\n";
-	// }
+	// kernel calculates for each element C=A+B
+	
 }
 
 ClContext *ClContext::_singleton = NULL;

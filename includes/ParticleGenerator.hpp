@@ -46,6 +46,9 @@ private:
 	// ~ParticleGenerator();
   	ParticleGenerator(Shader shader, GLuint amount);
 	std::vector<Particle> particles;
+	ClContext *ClContext;
+	ClParticle *particleArray;
+
 	GLuint amount;
 	unsigned int textureId;
 	Shader shader;
