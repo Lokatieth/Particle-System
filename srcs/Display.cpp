@@ -167,7 +167,7 @@ void Display::update()
 
 	Shader ourShader("srcs/shaders/vs.glsl", "srcs/shaders/fs.glsl");
 
-	this->_particleGenerator = ParticleGenerator::getInstance(ourShader, 15000);
+	this->_particleGenerator = ParticleGenerator::getInstance(ourShader, 10000);
 	// ParticleGenerator generator(ourShader, 5000);
     srand(glfwGetTime()); // initialize random seed	
 	while (!glfwWindowShouldClose(window))
